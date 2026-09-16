@@ -366,6 +366,53 @@ async function metamaskProvider(): Promise<Eip1193Provider> {
 }
 
 /**
+ * Point `window.ethereum` at the provider we chose, and make sure it took.
+ *
+ * genlayer-js offers no way to hand a provider in: `connect()` reads
+ * `window.ethereum`, and so does the signing path (`personal_sign` in
+ * `cancelTransaction` and friends). So the global has to BE the right wallet.
+ *
+ * Two things were wrong before. The assignment was reverted in a `finally`,
+ * which meant that even a successful connect left signing pointed back at
+ * whichever wallet had won the slot — connected to MetaMask, signing with an
+ * impostor. And a plain assignment was assumed to work: wallets commonly
+ * define `window.ethereum` with `Object.defineProperty`, so assigning to it
+ * can silently do nothing, which is how a probe that passed was followed by
+ * `wallet_getSnaps` failing inside the SDK on a different provider entirely.
+ *
+ * So: assign, verify, fall back to defineProperty, verify again, and if the
+ * slot is genuinely locked by another extension, say that rather than
+ * continuing into a confusing failure.
+ */
+function installProvider(provider: Eip1193Provider): void {
+  const slot = globalThis as { ethereum?: Eip1193Provider };
+
+  try {
+    slot.ethereum = provider;
+  } catch {
+    /* non-writable in strict mode; defineProperty below is the other route */
+  }
+  if (slot.ethereum === provider) return;
+
+  try {
+    Object.defineProperty(globalThis, "ethereum", {
+      value: provider,
+      configurable: true,
+      writable: true,
+    });
+  } catch {
+    /* non-configurable too; nothing further to try */
+  }
+  if (slot.ethereum === provider) return;
+
+  throw new Error(
+    "Another wallet extension has locked window.ethereum and will not release " +
+      "it, so MetaMask cannot be reached. Disable the other wallet extensions " +
+      "for this site and reload. Reading this console needs no wallet at all.",
+  );
+}
+
+/**
  * Connect a browser wallet through GenLayerJS's MetaMask Snap integration.
  *
  * Three things here are NOT incidental, and all three were wrong before this
@@ -382,10 +429,9 @@ async function metamaskProvider(): Promise<Eip1193Provider> {
  *     sets the chain. The account has to be requested from the wallet, or
  *     every later write has nothing to sign with.
  *  4. `connect()` reads `window.ethereum`, which with several wallets installed
- *     is whichever one injected last. `metamaskProvider()` finds the real
- *     MetaMask, and it is put in that slot for the duration of the call
- *     because the SDK gives no way to pass a provider in. The previous value
- *     is restored afterwards so the rest of the page is left as it was.
+ *     is whichever one injected last. `metamaskProvider()` finds one that can
+ *     actually run a Snap and `installProvider()` puts it in that slot — and
+ *     LEAVES it there, because the SDK reads the same global when it signs.
  *
  * NOT VERIFIED AGAINST A REAL WALLET. This is written from the SDK's source,
  * not from a working MetaMask session; see docs/DEPLOY-CONSOLE.md step 4.
@@ -400,17 +446,8 @@ export async function connectWallet(): Promise<ClientBundle> {
   ) as GenLayerClient<GenLayerChain>;
 
   const provider = await metamaskProvider();
-
-  const slot = globalThis as { ethereum?: Eip1193Provider };
-  const previous = slot.ethereum;
-  slot.ethereum = provider;
-  try {
-    await client.connect(SNAP_NETWORK_KEY[name]);
-  } finally {
-    // Leave the page as we found it, even if connect() threw.
-    if (previous === undefined) delete slot.ethereum;
-    else slot.ethereum = previous;
-  }
+  installProvider(provider);
+  await client.connect(SNAP_NETWORK_KEY[name]);
 
   // Undo connect()'s overwrite (point 2 above).
   (client as { chain: GenLayerChain }).chain = chain;
