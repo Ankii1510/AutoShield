@@ -50,6 +50,15 @@ export function ConnectionBar({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        {/* A protocol team evaluating AutoShield lands here, not on GitHub.
+            The integration guide has to be reachable from the console itself
+            or it may as well not exist. */}
+        <a
+          href="/integrate"
+          className="hidden rounded-lg px-2.5 py-1.5 text-xs font-medium text-[var(--color-ink-dim)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-ink)] md:inline-block"
+        >
+          Integrate
+        </a>
         <div
           role="group"
           aria-label="Data source"

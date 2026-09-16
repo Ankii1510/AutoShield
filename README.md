@@ -57,6 +57,11 @@ AutoShield has no power to move a single unit of value.
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full design.
 
+**Want to guard your own protocol?** Two methods and one wiring call is the
+entire surface. The console serves that guide at **`/integrate`**, and
+[`docs/INTEGRATION.md`](docs/INTEGRATION.md) is the longer version — including
+what AutoShield cannot do for you yet.
+
 ---
 
 ## Layout
@@ -189,6 +194,19 @@ server, no database, and no secret — every value it needs is a `NEXT_PUBLIC_*`
 address compiled into the bundle, and Studio Next answers with
 `access-control-allow-origin: *`, so the page calls the chain directly.
 
+**From a GitHub repository (what this deployment uses).** Import the repo at
+vercel.com/new and set **Root Directory** to `frontend` — the repository root
+has no `package.json`, and Vercel will otherwise detect `pyproject.toml` and try
+to build a Python app. Add the three variables before the first deploy:
+
+```
+NEXT_PUBLIC_GENLAYER_NETWORK     studio-next
+NEXT_PUBLIC_PROTOCOL_ADDRESS     0x054be2be73d15DB1B13d836F4045612AB65c685A
+NEXT_PUBLIC_AUTOSHIELD_ADDRESS   0x7834967C394e6831c34710134afc0BfFFD9eeA8E
+```
+
+**From the CLI**, the same values go in as build env vars:
+
 ```bash
 cd frontend
 npx vercel deploy --prod \
@@ -197,9 +215,23 @@ npx vercel deploy --prod \
   --build-env NEXT_PUBLIC_AUTOSHIELD_ADDRESS=0x7834967C394e6831c34710134afc0BfFFD9eeA8E
 ```
 
-They must be **build** env vars: Next.js inlines `NEXT_PUBLIC_*` while compiling,
-so setting them afterwards changes nothing until the next build. `.vercelignore`
-keeps `scripts/` — the only code that ever touches a private key — off the host.
+They must be **build** env vars either way: Next.js inlines `NEXT_PUBLIC_*` while
+compiling, so setting them afterwards changes nothing until the next build.
+
+`.vercelignore` keeps `scripts/` — the only code that ever touches a private key
+— out of a CLI upload. It does **not** apply to the GitHub path, where Vercel
+clones the whole repository; nothing is exposed by that (the scripts read keys
+from the environment and the repo is public anyway), but the file is not the
+safeguard it looks like when deploying from git.
+
+**Studio Next allows 500 RPC requests per hour**, and the console's polling is
+sized against that budget: it refreshes every 30s, caches incidents that have
+reached a terminal status, and stops polling for five minutes when the node
+returns 429 rather than hammering a window that cannot recover. An earlier build
+polled every 4s with ~7 reads per cycle — about 6,300 requests/hour — and burned
+the whole hourly budget in under five minutes, after which every call including
+the wallet connection failed. That was invisible on localnet, which has no rate
+limit at all.
 
 **After deploying, check the header does not say "Simulated — no chain".** Demo
 mode is the fallback when no addresses are configured, and it renders a complete,
@@ -484,10 +516,16 @@ are simulated, the header says "Simulated — no chain", and validator rows are 
 
 ### Limitations, stated plainly
 
-- **The browser wallet path has never been run.** See "Connecting a wallet" above.
-  The console has been verified against the live chain through its own service layer
-  (client construction, calldata encoding, contract reads, decoding) — the five
-  live-chain tests read Studio Next directly — but no MetaMask Snap session exists.
+- **The browser wallet path still has no successful run behind it.** Its first
+  real attempt failed, and reading the SDK source turned up three genuine bugs,
+  all now fixed: `client.connect()` was called without a network key so it
+  defaulted to `studionet` and asked MetaMask to switch to chain 61999; the call
+  then overwrote the verified chain; and it never sets `client.account`, which
+  has to be requested from the wallet separately. **Those fixes were written from
+  the source, not verified against a real wallet** — there is no MetaMask in the
+  environment they were written in. Everything else is verified: the console
+  reads the live chain through its own service layer, and the five live-chain
+  tests read Studio Next directly.
 - **Validator variance has been observed once, and is not characterised.** The `oracle`
   run produced 3 agree / 2 disagree, which proves the validators evaluate
   independently. It does not tell you the distribution. `--repeat N` on
@@ -560,8 +598,13 @@ they never corrupt its accounting.
 
 ## Next
 
-- **Exercise the browser wallet path.** The only part of the system with no verification
-  behind it at all.
+- **Exercise the browser wallet path.** Three bugs in it were found and fixed by
+  reading the SDK; none of those fixes has been confirmed against a real
+  MetaMask session. It remains the only part of the system with no verification
+  behind it.
+- **Build the monitoring service that files incidents.** In production the thing
+  that reports an incident is a service watching telemetry, not a person.
+  `scripts/demo-incident.mjs` is the manual stand-in; nothing automated exists.
 - **Characterise validator variance at size** — `node scripts/demo-incident.mjs
   --network studio-next --scenario critical --repeat 20`. One observation of
   disagreement is proof that it happens, not a distribution. This is the only honest
