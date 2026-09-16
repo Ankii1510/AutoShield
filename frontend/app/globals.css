@@ -29,22 +29,26 @@
   --color-line: #edebe5;
   --color-line-bright: #dcd9d1;
 
-  /* Ink. Near-black rather than black: pure #000 on white glares and is the
-     quickest way to make an interface look unconsidered. */
-  --color-ink: #1a1c20;
-  --color-ink-dim: #5c6270;
-  --color-ink-faint: #8c919d;
+  /* Ink. Near-black rather than black: pure #000 on white glares. But "soft"
+     is not the same as "faint" — every value here is measured against both
+     white and the ground, and the lightest clears 4.5:1 on BOTH.
+     An earlier pass had ink-faint at 3.16:1, which looked restrained in a
+     mockup and was genuinely hard to read on a real screen. Labels, units and
+     panel headings all use these; none of them are decoration. */
+  --color-ink: #141619;      /* 18.1:1 on white */
+  --color-ink-dim: #474d59;  /*  8.5:1 */
+  --color-ink-faint: #666c78; /*  5.3:1 -- the floor, not a suggestion */
 
   /* Status scale. Deep and desaturated so they stay legible on white and read
      as institutional rather than alarming. Components tint these at 10% for
      backgrounds, so each one needs to hold up both as text and as a wash. */
-  --color-ok: #0b7a58;
+  --color-ok: #08624a;   /* 7.4:1 on white */
   --color-ok-dim: #e4f2ec;
-  --color-warn: #96610a;
+  --color-warn: #7d5008;  /* 7.0:1 -- amber is the hardest to keep readable */
   --color-warn-dim: #fbf0da;
-  --color-crit: #b02a1d;
+  --color-crit: #98231a;  /* 8.1:1 */
   --color-crit-dim: #fbe9e6;
-  --color-info: #23509f;
+  --color-info: #1d448a;  /* 9.4:1 */
   --color-info-dim: #e7edf8;
 
   /* Elevation. Two steps only: resting panels, and things that float. */
