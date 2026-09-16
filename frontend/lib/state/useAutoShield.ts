@@ -80,8 +80,39 @@ const TERMINAL_STATUSES = new Set(["APPLIED", "DISMISSED", "STALE"]);
 // 2,000 console errors.
 const RATE_LIMIT_BACKOFF_MS = 5 * 60_000;
 
+/**
+ * The readable text of a thrown value.
+ *
+ * MetaMask rejects with a PLAIN OBJECT (`{code: 4001, message: "..."}`), not an
+ * `Error`. An `err instanceof Error` check therefore threw all of it away and
+ * showed the generic fallback, which is why a wrong-chain rejection surfaced as
+ * the uninformative "Wallet connection failed".
+ */
+function errorText(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (err && typeof err === "object") {
+    const message = (err as { message?: unknown }).message;
+    const code = (err as { code?: unknown }).code;
+    if (typeof message === "string" && message) {
+      return typeof code === "number" ? `${message} (code ${code})` : message;
+    }
+    // A wallet extension can reject with an object carrying no message at all
+    // — that is what the console showed as a bare "Uncaught (in promise)
+    // Object". Rather than swallow it, surface whatever it does carry: a code,
+    // or a short serialisation. An ugly message beats a useless one.
+    if (typeof code === "number") return `${fallback} (code ${code})`;
+    try {
+      const shape = JSON.stringify(err);
+      if (shape && shape !== "{}") return `${fallback}: ${shape.slice(0, 200)}`;
+    } catch {
+      /* circular or non-serialisable; fall through to the plain message */
+    }
+  }
+  return fallback;
+}
+
 function isRateLimited(err: unknown): boolean {
-  const text = err instanceof Error ? err.message : String(err ?? "");
+  const text = errorText(err, String(err ?? ""));
   return /rate limit|429|too many requests/i.test(text);
 }
 
@@ -543,9 +574,7 @@ export function useAutoShield(): AutoShieldView {
           ? "Cannot connect right now: this network's limit of 500 RPC " +
             "requests per hour is currently reached. Wait a few minutes and " +
             "try again — this is not a wallet fault."
-          : err instanceof Error
-            ? err.message
-            : "Wallet connection failed",
+          : errorText(err, "Wallet connection failed"),
       }));
     } finally {
       setLoading(false);

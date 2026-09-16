@@ -272,15 +272,83 @@ type Eip1193Provider = {
   request: (args: { method: string; params?: unknown }) => Promise<unknown>;
 };
 
-function injectedProvider(): Eip1193Provider {
-  const provider = (globalThis as { ethereum?: Eip1193Provider }).ethereum;
-  if (!provider) {
+type AnnouncedProvider = {
+  info?: { rdns?: string; name?: string };
+  provider?: Eip1193Provider;
+};
+
+/**
+ * Find MetaMask specifically, among however many wallets are installed.
+ *
+ * `window.ethereum` is a single slot and every injected wallet wants it. With
+ * several extensions present the winner is whichever injected last, so a user
+ * with MetaMask AND Phantom (or Rabby, or OKX) can easily end up with a
+ * `window.ethereum` that is not MetaMask at all. GenLayer's Snap calls —
+ * `wallet_getSnaps`, `wallet_requestSnaps` — exist only in MetaMask, so on any
+ * other provider they reject, usually with a bare object that carries no
+ * message. That is what surfaced here as a blank "Wallet connection failed"
+ * next to `in-page.js` errors from an extension we never asked for.
+ *
+ * EIP-6963 exists for exactly this: wallets announce themselves as separate
+ * providers instead of fighting over one global. We ask, wait briefly, and pick
+ * the one whose rdns is MetaMask's.
+ *
+ * Fallbacks, in order, because 6963 support is not universal:
+ *   1. the 6963 announcement whose rdns is `io.metamask`
+ *   2. `window.ethereum.providers[]` — the older multi-wallet convention
+ *   3. `window.ethereum` itself, but only if it claims `isMetaMask`
+ *
+ * If none of those find it, say so plainly rather than handing genlayer-js a
+ * provider that cannot possibly work.
+ */
+async function metamaskProvider(): Promise<Eip1193Provider> {
+  const found: AnnouncedProvider[] = [];
+  const onAnnounce = (event: Event) => {
+    const detail = (event as CustomEvent<AnnouncedProvider>).detail;
+    if (detail?.provider) found.push(detail);
+  };
+
+  window.addEventListener("eip6963:announceProvider", onAnnounce);
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
+  // Announcements are synchronous in practice; one tick is enough, and this
+  // must not stall the click.
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  window.removeEventListener("eip6963:announceProvider", onAnnounce);
+
+  const announced = found.find((entry) => entry.info?.rdns === "io.metamask");
+  if (announced?.provider) return announced.provider;
+
+  const injected = (
+    globalThis as {
+      ethereum?: Eip1193Provider & {
+        isMetaMask?: boolean;
+        providers?: (Eip1193Provider & { isMetaMask?: boolean })[];
+      };
+    }
+  ).ethereum;
+
+  const fromArray = injected?.providers?.find((entry) => entry.isMetaMask);
+  if (fromArray) return fromArray;
+
+  if (injected?.isMetaMask) return injected;
+
+  if (!injected && found.length === 0) {
     throw new Error(
-      "No browser wallet found. MetaMask must be installed for this button; " +
+      "No browser wallet found. MetaMask is required for this button — " +
         "every read on this page works without one.",
     );
   }
-  return provider;
+
+  const names = found
+    .map((entry) => entry.info?.name)
+    .filter(Boolean)
+    .join(", ");
+  throw new Error(
+    "MetaMask was not found among the installed wallets" +
+      (names ? ` (${names})` : "") +
+      ". GenLayer signs through a MetaMask Snap, which no other wallet " +
+      "supports. Reading this console needs no wallet at all.",
+  );
 }
 
 /**
@@ -299,6 +367,11 @@ function injectedProvider(): Eip1193Provider {
  *  3. `connect()` never sets `client.account` — it only installs the Snap and
  *     sets the chain. The account has to be requested from the wallet, or
  *     every later write has nothing to sign with.
+ *  4. `connect()` reads `window.ethereum`, which with several wallets installed
+ *     is whichever one injected last. `metamaskProvider()` finds the real
+ *     MetaMask, and it is put in that slot for the duration of the call
+ *     because the SDK gives no way to pass a provider in. The previous value
+ *     is restored afterwards so the rest of the page is left as it was.
  *
  * NOT VERIFIED AGAINST A REAL WALLET. This is written from the SDK's source,
  * not from a working MetaMask session; see docs/DEPLOY-CONSOLE.md step 4.
@@ -312,12 +385,23 @@ export async function connectWallet(): Promise<ClientBundle> {
       : createClientV1({ chain: chain as never })
   ) as GenLayerClient<GenLayerChain>;
 
-  await client.connect(SNAP_NETWORK_KEY[name]);
+  const provider = await metamaskProvider();
+
+  const slot = globalThis as { ethereum?: Eip1193Provider };
+  const previous = slot.ethereum;
+  slot.ethereum = provider;
+  try {
+    await client.connect(SNAP_NETWORK_KEY[name]);
+  } finally {
+    // Leave the page as we found it, even if connect() threw.
+    if (previous === undefined) delete slot.ethereum;
+    else slot.ethereum = previous;
+  }
 
   // Undo connect()'s overwrite (point 2 above).
   (client as { chain: GenLayerChain }).chain = chain;
 
-  const accounts = (await injectedProvider().request({
+  const accounts = (await provider.request({
     method: "eth_requestAccounts",
   })) as string[] | undefined;
   const address = accounts?.[0] ?? null;
