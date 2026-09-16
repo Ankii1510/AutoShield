@@ -51,7 +51,39 @@ import type {
   TransactionState,
 } from "@/lib/types";
 
-const POLL_INTERVAL_MS = 4000;
+// Polling budget, not a feel-good number.
+//
+// Studio Next allows 500 RPC requests per HOUR per client. The console used to
+// poll every 4s and each refresh made ~7 reads (status, telemetry, config, the
+// incident list, and one read per incident), which is ~6,300 requests/hour --
+// over twelve times the limit. It burned the whole hourly budget in under five
+// minutes and then every call, including the wallet connection, came back 429.
+//
+// This was invisible on localnet, which has no rate limit at all. It only
+// appeared once the console was pointed at a real network.
+//
+// At 30s with the incident caching below, steady state is ~3 reads per cycle:
+// 360 requests/hour, leaving headroom for writes and for a wallet connecting.
+const POLL_INTERVAL_MS = 30_000;
+
+// How often to re-read things that change rarely (contract owner, evaluator,
+// guard wiring) rather than on every cycle.
+const SLOW_REFRESH_EVERY = 10;
+
+// A status an incident can no longer move out of. These are cached rather than
+// re-read every cycle; a READY or EVALUATED incident is still live and is
+// always re-read.
+const TERMINAL_STATUSES = new Set(["APPLIED", "DISMISSED", "STALE"]);
+
+// When the node says we are rate limited, STOP asking. Polling through a 429
+// never lets the hourly window recover, and it is what turned one mistake into
+// 2,000 console errors.
+const RATE_LIMIT_BACKOFF_MS = 5 * 60_000;
+
+function isRateLimited(err: unknown): boolean {
+  const text = err instanceof Error ? err.message : String(err ?? "");
+  return /rate limit|429|too many requests/i.test(text);
+}
 
 export type FlowStage =
   | "idle"
@@ -155,6 +187,12 @@ export function useAutoShield(): AutoShieldView {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Incident cache, cycle counter and rate-limit gate. Refs, not state: they
+  // steer the next read and must not themselves trigger a re-render.
+  const incidentCache = useRef<Map<string, Incident>>(new Map());
+  const cycle = useRef(0);
+  const blockedUntil = useRef(0);
   const [scenarioId, setScenarioId] = useState<string>("critical");
   const [roles, setRoles] = useState<OperatorRoles | null>(null);
   const addressRef = useRef<string | null>(null);
@@ -176,6 +214,14 @@ export function useAutoShield(): AutoShieldView {
   const tickRef = useRef(0);
   tickRef.current = tick;
   addressRef.current = connection.address;
+
+  // Mirrors of the two values the polling loop reads to decide whether it can
+  // skip a request this cycle. Kept as refs so reading them does not make
+  // `refresh` depend on state it would then invalidate.
+  const configRef = useRef<ShieldConfig | null>(null);
+  const rolesRef = useRef<OperatorRoles | null>(null);
+  configRef.current = config;
+  rolesRef.current = roles;
 
   useEffect(() => {
     const handle = setInterval(() => setTick((value) => value + 1), 1000);
@@ -280,15 +326,43 @@ export function useAutoShield(): AutoShieldView {
     const service = serviceRef.current;
     if (!service) return;
 
+    // Held off after a 429: asking again inside the window cannot succeed and
+    // stops the hourly budget from recovering.
+    if (Date.now() < blockedUntil.current) return;
+
+    const turn = cycle.current++;
+    const slowTurn = turn % SLOW_REFRESH_EVERY === 0;
+
     try {
-      const [nextStatus, nextTelemetry, nextConfig, nextIncidents] = await Promise.all([
+      const [nextStatus, nextTelemetry, ids] = await Promise.all([
         service.protocolStatus(),
         service.protocolTelemetry(),
-        service.shieldConfig(),
-        service.incidents(),
+        service.incidentIds(),
       ]);
-      // Discard if a newer read started while this one was in flight.
       if (token !== readToken.current) return;
+
+      // Config (owner, evaluator, guard wiring) changes rarely, so it is read
+      // on the first cycle and occasionally after that rather than every time.
+      const nextConfig =
+        slowTurn || !configRef.current ? await service.shieldConfig() : configRef.current;
+      if (token !== readToken.current) return;
+
+      // Re-read only what can still change. A DISMISSED or APPLIED incident is
+      // final, so re-reading it every 30 seconds buys nothing and costs one
+      // request each. They are still re-read on a slow turn, so a cache that
+      // somehow went stale corrects itself rather than persisting.
+      const recent = ids.slice(-25).reverse();
+      const nextIncidents = await Promise.all(
+        recent.map(async (id) => {
+          const cached = incidentCache.current.get(id);
+          if (cached && !slowTurn && TERMINAL_STATUSES.has(cached.status)) return cached;
+          const fresh = await service.incident(id);
+          incidentCache.current.set(id, fresh);
+          return fresh;
+        }),
+      );
+      if (token !== readToken.current) return;
+
       setStatus(nextStatus);
       setTelemetry(nextTelemetry);
       setConfig(nextConfig);
@@ -300,7 +374,7 @@ export function useAutoShield(): AutoShieldView {
       // refreshed with everything else: the owner can change the allowlist or
       // the evaluator at any time, and a stale badge would be a lie.
       const who = addressRef.current;
-      if (who) {
+      if (who && (slowTurn || !rolesRef.current)) {
         const reporter = await service.isReporter(who);
         if (token !== readToken.current) return;
         setRoles({
@@ -314,6 +388,15 @@ export function useAutoShield(): AutoShieldView {
       }
     } catch (err) {
       if (token !== readToken.current) return;
+      if (isRateLimited(err)) {
+        blockedUntil.current = Date.now() + RATE_LIMIT_BACKOFF_MS;
+        setError(
+          "This network allows 500 RPC requests per hour and the limit is " +
+            "currently reached. Live updates are paused for 5 minutes; the " +
+            "figures above are the last values read from the chain.",
+        );
+        return;
+      }
       setError(err instanceof Error ? err.message : "Failed to read contract state");
     }
   }, [mode]);
@@ -450,9 +533,19 @@ export function useAutoShield(): AutoShieldView {
       });
       await refresh();
     } catch (err) {
+      // A 429 here is not a wallet problem, and saying "Wallet connection
+      // failed" sends the operator hunting for a MetaMask fault that does not
+      // exist. Connecting makes its own RPC calls, so it fails first when the
+      // hourly budget is gone.
       setConnection((prev) => ({
         ...prev,
-        error: err instanceof Error ? err.message : "Wallet connection failed",
+        error: isRateLimited(err)
+          ? "Cannot connect right now: this network's limit of 500 RPC " +
+            "requests per hour is currently reached. Wait a few minutes and " +
+            "try again — this is not a wallet fault."
+          : err instanceof Error
+            ? err.message
+            : "Wallet connection failed",
       }));
     } finally {
       setLoading(false);
