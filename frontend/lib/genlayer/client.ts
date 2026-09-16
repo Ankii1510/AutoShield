@@ -277,77 +277,91 @@ type AnnouncedProvider = {
   provider?: Eip1193Provider;
 };
 
+/** Does this provider actually implement the Snaps API? */
+async function supportsSnaps(provider: Eip1193Provider): Promise<boolean> {
+  try {
+    await provider.request({ method: "wallet_getSnaps" });
+    return true;
+  } catch {
+    // -32601 "method not found" lands here, and so does anything else that
+    // means this provider cannot run a Snap. Either way it is not our wallet.
+    return false;
+  }
+}
+
 /**
- * Find MetaMask specifically, among however many wallets are installed.
+ * Find a provider that can actually run the GenLayer Snap.
  *
- * `window.ethereum` is a single slot and every injected wallet wants it. With
- * several extensions present the winner is whichever injected last, so a user
- * with MetaMask AND Phantom (or Rabby, or OKX) can easily end up with a
- * `window.ethereum` that is not MetaMask at all. GenLayer's Snap calls —
- * `wallet_getSnaps`, `wallet_requestSnaps` — exist only in MetaMask, so on any
- * other provider they reject, usually with a bare object that carries no
- * message. That is what surfaced here as a blank "Wallet connection failed"
- * next to `in-page.js` errors from an extension we never asked for.
+ * `window.ethereum` is a single slot and every injected wallet wants it, so
+ * with several extensions installed the winner is whichever injected last.
  *
- * EIP-6963 exists for exactly this: wallets announce themselves as separate
- * providers instead of fighting over one global. We ask, wait briefly, and pick
- * the one whose rdns is MetaMask's.
+ * The trap is that `isMetaMask` is NOT evidence. Rabby, Coinbase Wallet, OKX
+ * and others set that flag to keep dapps working, so a "MetaMask" check passes
+ * on a wallet that has never heard of Snaps. That is exactly what happened
+ * here: the flag was trusted, and `wallet_getSnaps` came back
+ * `-32601 Method not found` from an impostor.
  *
- * Fallbacks, in order, because 6963 support is not universal:
- *   1. the 6963 announcement whose rdns is `io.metamask`
- *   2. `window.ethereum.providers[]` — the older multi-wallet convention
- *   3. `window.ethereum` itself, but only if it claims `isMetaMask`
- *
- * If none of those find it, say so plainly rather than handing genlayer-js a
- * provider that cannot possibly work.
+ * So this does not trust any flag. It collects every provider it can see —
+ * EIP-6963 announcements first, then the older `providers[]` array, then the
+ * global — and PROBES each one with `wallet_getSnaps`. A provider that answers
+ * can run the Snap; one that does not, cannot. The io.metamask announcement is
+ * tried first because it is nearly always the right answer, but it is probed
+ * like everything else.
  */
 async function metamaskProvider(): Promise<Eip1193Provider> {
-  const found: AnnouncedProvider[] = [];
+  const announced: AnnouncedProvider[] = [];
   const onAnnounce = (event: Event) => {
     const detail = (event as CustomEvent<AnnouncedProvider>).detail;
-    if (detail?.provider) found.push(detail);
+    if (detail?.provider) announced.push(detail);
   };
 
   window.addEventListener("eip6963:announceProvider", onAnnounce);
   window.dispatchEvent(new Event("eip6963:requestProvider"));
-  // Announcements are synchronous in practice; one tick is enough, and this
-  // must not stall the click.
+  // Announcements are synchronous in practice; one short wait is enough and
+  // this must not stall the click.
   await new Promise((resolve) => setTimeout(resolve, 150));
   window.removeEventListener("eip6963:announceProvider", onAnnounce);
 
-  const announced = found.find((entry) => entry.info?.rdns === "io.metamask");
-  if (announced?.provider) return announced.provider;
-
   const injected = (
     globalThis as {
-      ethereum?: Eip1193Provider & {
-        isMetaMask?: boolean;
-        providers?: (Eip1193Provider & { isMetaMask?: boolean })[];
-      };
+      ethereum?: Eip1193Provider & { providers?: Eip1193Provider[] };
     }
   ).ethereum;
 
-  const fromArray = injected?.providers?.find((entry) => entry.isMetaMask);
-  if (fromArray) return fromArray;
+  // Most likely first, but every one of them still has to prove itself.
+  const candidates: Eip1193Provider[] = [];
+  const metamaskFirst = announced.find((e) => e.info?.rdns === "io.metamask");
+  if (metamaskFirst?.provider) candidates.push(metamaskFirst.provider);
+  for (const entry of announced) {
+    if (entry.provider && !candidates.includes(entry.provider)) {
+      candidates.push(entry.provider);
+    }
+  }
+  for (const entry of injected?.providers ?? []) {
+    if (!candidates.includes(entry)) candidates.push(entry);
+  }
+  if (injected && !candidates.includes(injected)) candidates.push(injected);
 
-  if (injected?.isMetaMask) return injected;
-
-  if (!injected && found.length === 0) {
+  if (candidates.length === 0) {
     throw new Error(
       "No browser wallet found. MetaMask is required for this button — " +
         "every read on this page works without one.",
     );
   }
 
-  const names = found
+  for (const candidate of candidates) {
+    if (await supportsSnaps(candidate)) return candidate;
+  }
+
+  const names = announced
     .map((entry) => entry.info?.name)
     .filter(Boolean)
     .join(", ");
   throw new Error(
-    "MetaMask was not found among the installed wallets" +
-      (names ? ` (${names})` : "") +
-      ". GenLayer signs through a MetaMask Snap, which no other wallet " +
-      "supports. Reading this console needs no wallet at all.",
+    `None of the installed wallets support MetaMask Snaps${names ? ` (found: ${names})` : ""}. ` +
+      "GenLayer signs through a Snap, which only MetaMask itself can run — " +
+      "wallets that merely report isMetaMask cannot. Install or enable " +
+      "MetaMask, or skip it: reading this console needs no wallet at all.",
   );
 }
 
