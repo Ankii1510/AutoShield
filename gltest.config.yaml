@@ -1,0 +1,25 @@
+# gltest 0.29.2 configuration.
+#
+# Root keys are `networks`, `paths`, `environment`. Phase 2 is direct-mode only,
+# so no network block is needed yet — gltest falls back to its built-in network
+# definitions (localnet, studionet, testnet_asimov, testnet_bradbury).
+#
+# Three schema traps recorded here for the deployment phase, all found the hard
+# way against 0.29.2:
+#   - the genlayer-dev skill documents an older `contract_path:` root key, which
+#     0.29.2 rejects outright;
+#   - each network entry must be a mapping (`{}`), never an empty value;
+#   - `${...}` placeholders are resolved eagerly for EVERY listed network, so
+#     listing testnet_bradbury without ACCOUNT_PRIVATE_KEY_1 set breaks the
+#     entire test run, not just that network.
+#
+# When integration tests and deployment arrive, add:
+#
+#   networks:
+#     testnet_bradbury:
+#       accounts:
+#         - "${ACCOUNT_PRIVATE_KEY_1}"
+
+paths:
+  contracts: contracts
+  artifacts: artifacts

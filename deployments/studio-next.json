@@ -1,0 +1,294 @@
+{
+  "network": "studio-next",
+  "chainName": "GenLayer Studio Next",
+  "chainId": 61997,
+  "rpc": "https://studio-next.genlayer.com/api",
+  "explorer": null,
+  "consensusMainContract": "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+  "deployedAt": "2026-09-15T14:48:27.950Z",
+  "deployer": "0x83d074B194aa2AD828729F20b3988ac70e73161f",
+  "operator": "0x83d074B194aa2AD828729F20b3988ac70e73161f",
+  "contracts": {
+    "DemoLendingProtocol": "0x054be2be73d15DB1B13d836F4045612AB65c685A",
+    "AutoShield": "0x7834967C394e6831c34710134afc0BfFFD9eeA8E"
+  },
+  "transactions": [
+    {
+      "what": "DemoLendingProtocol deploy",
+      "hash": "0x826017fa297cdf6309b169567786a2944c4e445a48228892042c9f6b6b51480f",
+      "explorer": null,
+      "consensus": {
+        "statusName": "FINALIZED",
+        "executionResult": "SUCCESS",
+        "final": null,
+        "numOfRounds": null,
+        "lastRound": null,
+        "voteCount": 5,
+        "votes": {
+          "0x1dA3a7de8EA65A318bf88Eb63d3dC55295Dd257E": "agree",
+          "0x5A4230B920b18c4AFD3A28F99Eae669B7F2cdC1e": "idle",
+          "0x8142E5D1b04f84c3cD995C25AAe31B31F8e0379E": "agree",
+          "0xA793D9dc0ED9edC1f9F732bB68b5D3AFA934F52D": "idle",
+          "0xcbC79F96B7A275b23EE64d80a98325107F6E1b77": "agree"
+        },
+        "validatorCount": 4,
+        "validatorResults": [
+          "SUCCESS",
+          "SUCCESS",
+          "SUCCESS",
+          "ERROR"
+        ]
+      }
+    },
+    {
+      "what": "AutoShield deploy",
+      "hash": "0x1b51a12b112246e642d2bd335b4354cf4fbea2c4b7e6a1552f93f0123f6a94df",
+      "explorer": null,
+      "consensus": {
+        "statusName": "FINALIZED",
+        "executionResult": "SUCCESS",
+        "final": null,
+        "numOfRounds": null,
+        "lastRound": null,
+        "voteCount": 5,
+        "votes": {
+          "0x5cDf4BdDeEDa0e32ED596b94f69AcC0FbB57f264": "idle",
+          "0xE52dDB85587585930b1E5f1Fe88fef21CcA49829": "agree",
+          "0xa0435f618c1F27B254998018AEa8Da5C77187852": "idle",
+          "0xcbC79F96B7A275b23EE64d80a98325107F6E1b77": "agree",
+          "0xf13c3DfE38C8E206C33F750C24a1b043b63Cb810": "agree"
+        },
+        "validatorCount": 4,
+        "validatorResults": [
+          "ERROR",
+          "SUCCESS",
+          "SUCCESS",
+          "ERROR"
+        ]
+      }
+    },
+    {
+      "what": "set_initial_guard",
+      "hash": "0xd986051b0fcef8abf448f8ca03e3c59b1a931821003ba7cb18066e3cd211d04e",
+      "explorer": null,
+      "consensus": {
+        "statusName": "FINALIZED",
+        "executionResult": "SUCCESS",
+        "final": null,
+        "numOfRounds": null,
+        "lastRound": null,
+        "voteCount": 5,
+        "votes": {
+          "0x05d8aFc66B515038712537f99cAAEA73d16f0007": "agree",
+          "0x5cDf4BdDeEDa0e32ED596b94f69AcC0FbB57f264": "idle",
+          "0xE4E106086F167D75E2270fa5f3680f6ac598d179": "agree",
+          "0xE52dDB85587585930b1E5f1Fe88fef21CcA49829": "agree",
+          "0xf13c3DfE38C8E206C33F750C24a1b043b63Cb810": "idle"
+        },
+        "validatorCount": 4,
+        "validatorResults": [
+          "SUCCESS",
+          "SUCCESS",
+          "ERROR",
+          "SUCCESS"
+        ]
+      }
+    },
+    {
+      "what": "set_reporter",
+      "hash": "0xd3c2b5395e420a1ffb89419c52a761073a82e98c1b48e8e526e9855b1681c682",
+      "explorer": null,
+      "consensus": {
+        "statusName": "FINALIZED",
+        "executionResult": "SUCCESS",
+        "final": null,
+        "numOfRounds": null,
+        "lastRound": null,
+        "voteCount": 5,
+        "votes": {
+          "0x5cDf4BdDeEDa0e32ED596b94f69AcC0FbB57f264": "agree",
+          "0x8D32eb5D0207f7E230C45e7BF0D14B2ED5DA3028": "idle",
+          "0xa0435f618c1F27B254998018AEa8Da5C77187852": "agree",
+          "0xcF5Fd792Df0Dc9d297af75c82B4A0011e8FA1A4A": "agree",
+          "0xf13c3DfE38C8E206C33F750C24a1b043b63Cb810": "idle"
+        },
+        "validatorCount": 4,
+        "validatorResults": [
+          "SUCCESS",
+          "SUCCESS",
+          "SUCCESS",
+          "ERROR"
+        ]
+      }
+    },
+    {
+      "what": "mint_demo_balance",
+      "hash": "0xa32c8e136db5a22837a43cfbfa8c1128462a733248fb76898b1c63a8a04aa43a",
+      "explorer": null,
+      "consensus": {
+        "statusName": "FINALIZED",
+        "executionResult": "SUCCESS",
+        "final": null,
+        "numOfRounds": null,
+        "lastRound": null,
+        "voteCount": 5,
+        "votes": {
+          "0x5cDf4BdDeEDa0e32ED596b94f69AcC0FbB57f264": "idle",
+          "0x8142E5D1b04f84c3cD995C25AAe31B31F8e0379E": "agree",
+          "0xE52dDB85587585930b1E5f1Fe88fef21CcA49829": "agree",
+          "0xEEcEC5D1E07Ee40f5cb85aF922178Dc01278013C": "idle",
+          "0xf13c3DfE38C8E206C33F750C24a1b043b63Cb810": "agree"
+        },
+        "validatorCount": 4,
+        "validatorResults": [
+          "ERROR",
+          "ERROR",
+          "SUCCESS",
+          "SUCCESS"
+        ]
+      }
+    },
+    {
+      "what": "deposit",
+      "hash": "0x5a1f1cb721913ac0d8d27cba1c7069a6079c631cfa1db0fc4a8265d8caa8314b",
+      "explorer": null,
+      "consensus": {
+        "statusName": "FINALIZED",
+        "executionResult": "SUCCESS",
+        "final": null,
+        "numOfRounds": null,
+        "lastRound": null,
+        "voteCount": 5,
+        "votes": {
+          "0x5cDf4BdDeEDa0e32ED596b94f69AcC0FbB57f264": "agree",
+          "0xA793D9dc0ED9edC1f9F732bB68b5D3AFA934F52D": "agree",
+          "0xE52dDB85587585930b1E5f1Fe88fef21CcA49829": "idle",
+          "0xcF5Fd792Df0Dc9d297af75c82B4A0011e8FA1A4A": "idle",
+          "0xf13c3DfE38C8E206C33F750C24a1b043b63Cb810": "agree"
+        },
+        "validatorCount": 4,
+        "validatorResults": [
+          "SUCCESS",
+          "SUCCESS",
+          "ERROR",
+          "ERROR"
+        ]
+      }
+    },
+    {
+      "what": "borrow",
+      "hash": "0x30c010fc17e024a1ad3c46b97469831a11ee3003c9cddb6d32da2ecec73b722b",
+      "explorer": null,
+      "consensus": {
+        "statusName": "FINALIZED",
+        "executionResult": "SUCCESS",
+        "final": null,
+        "numOfRounds": null,
+        "lastRound": null,
+        "voteCount": 5,
+        "votes": {
+          "0x6760cDeC573cf38568C59872ee48B6fED41F8A4c": "agree",
+          "0x8142E5D1b04f84c3cD995C25AAe31B31F8e0379E": "agree",
+          "0xA793D9dc0ED9edC1f9F732bB68b5D3AFA934F52D": "idle",
+          "0xcEf1Baa172d0b4D99Dcc505B36332F26D1088025": "idle",
+          "0xcF5Fd792Df0Dc9d297af75c82B4A0011e8FA1A4A": "agree"
+        },
+        "validatorCount": 4,
+        "validatorResults": [
+          "ERROR",
+          "SUCCESS",
+          "SUCCESS",
+          "SUCCESS"
+        ]
+      }
+    },
+    {
+      "what": "mint_demo_balance",
+      "hash": "0xc77ced8b61ed219fbbee3e16469713617e70d3773cb8fe7c6315b5ccf6b28758",
+      "explorer": null,
+      "consensus": {
+        "statusName": "FINALIZED",
+        "executionResult": "SUCCESS",
+        "final": null,
+        "numOfRounds": null,
+        "lastRound": null,
+        "voteCount": 5,
+        "votes": {
+          "0x1dA3a7de8EA65A318bf88Eb63d3dC55295Dd257E": "agree",
+          "0x5cDf4BdDeEDa0e32ED596b94f69AcC0FbB57f264": "idle",
+          "0xA793D9dc0ED9edC1f9F732bB68b5D3AFA934F52D": "idle",
+          "0xa0435f618c1F27B254998018AEa8Da5C77187852": "agree",
+          "0xcF5Fd792Df0Dc9d297af75c82B4A0011e8FA1A4A": "agree"
+        },
+        "validatorCount": 4,
+        "validatorResults": [
+          "SUCCESS",
+          "SUCCESS",
+          "SUCCESS",
+          "ERROR"
+        ]
+      }
+    },
+    {
+      "what": "deposit",
+      "hash": "0x1a9c3fd023193d871672e01770aa19ae4bcfe32d54d852e5ad7a45b99e025325",
+      "explorer": null,
+      "consensus": {
+        "statusName": "FINALIZED",
+        "executionResult": "SUCCESS",
+        "final": null,
+        "numOfRounds": null,
+        "lastRound": null,
+        "voteCount": 5,
+        "votes": {
+          "0xA793D9dc0ED9edC1f9F732bB68b5D3AFA934F52D": "idle",
+          "0xE52dDB85587585930b1E5f1Fe88fef21CcA49829": "idle",
+          "0xcEf1Baa172d0b4D99Dcc505B36332F26D1088025": "agree",
+          "0xcbC79F96B7A275b23EE64d80a98325107F6E1b77": "agree",
+          "0xf13c3DfE38C8E206C33F750C24a1b043b63Cb810": "agree"
+        },
+        "validatorCount": 4,
+        "validatorResults": [
+          "SUCCESS",
+          "ERROR",
+          "SUCCESS",
+          "SUCCESS"
+        ]
+      }
+    },
+    {
+      "what": "borrow",
+      "hash": "0xe8a8f384c4bec04f6f030d35d2574689e8c6b6884ef2800b0704f348028ca3fb",
+      "explorer": null,
+      "consensus": {
+        "statusName": "FINALIZED",
+        "executionResult": "SUCCESS",
+        "final": null,
+        "numOfRounds": null,
+        "lastRound": null,
+        "voteCount": 5,
+        "votes": {
+          "0x1dA3a7de8EA65A318bf88Eb63d3dC55295Dd257E": "idle",
+          "0x5cDf4BdDeEDa0e32ED596b94f69AcC0FbB57f264": "idle",
+          "0xE52dDB85587585930b1E5f1Fe88fef21CcA49829": "agree",
+          "0xa0435f618c1F27B254998018AEa8Da5C77187852": "agree",
+          "0xcbC79F96B7A275b23EE64d80a98325107F6E1b77": "agree"
+        },
+        "validatorCount": 4,
+        "validatorResults": [
+          "ERROR",
+          "SUCCESS",
+          "ERROR",
+          "SUCCESS"
+        ]
+      }
+    }
+  ],
+  "frontend": {
+    "NEXT_PUBLIC_GENLAYER_NETWORK": "studio-next",
+    "NEXT_PUBLIC_PROTOCOL_ADDRESS": "0x054be2be73d15DB1B13d836F4045612AB65c685A",
+    "NEXT_PUBLIC_AUTOSHIELD_ADDRESS": "0x7834967C394e6831c34710134afc0BfFFD9eeA8E"
+  },
+  "runnerPin": "py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng",
+  "note": "Public information only. No private key, mnemonic or credential belongs in this file or anywhere else in the repository."
+}

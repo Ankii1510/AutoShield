@@ -1,0 +1,21 @@
+# AutoShield — Python toolchain.
+# REQUIRES Python >= 3.12. On 3.11, pip silently resolves genlayer-test to
+# 0.1.2, which has no direct-mode fixtures and makes the test suite appear
+# broken for no visible reason.
+#
+# CONSENSUS v0.6. These are release candidates, and they are pinned exactly.
+# v0.5 -> v0.6 is a PROTOCOL break, not a library bump: the contracts use
+# v0.6-only SDK spellings and carry the v0.6 runner pin, so downgrading any of
+# these does not "fall back" to a working v0.5 setup — it produces a suite that
+# fails in ways that look like contract bugs. Install with --prerelease=allow
+# (uv) or --pre (pip).
+genlayer-test==0.30.0rc2
+genvm-linter==0.11.1rc2
+
+# genlayer-py is pulled in by genlayer-test (>=0.19.0rc2,<0.20.0) and pinned
+# here so the client half cannot drift from the node half.
+genlayer-py==0.19.0rc2
+
+# Integration tests only (tests/integration): starts a local GenLayer Sim node
+# with real leader + validator consensus. Direct-mode tests do not need it.
+#   pip install --pre 'genlayer-test[sim]==0.30.0rc2'

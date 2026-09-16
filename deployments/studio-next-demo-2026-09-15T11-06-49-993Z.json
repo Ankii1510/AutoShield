@@ -1,0 +1,50 @@
+{
+  "network": "studio-next",
+  "chainId": 61997,
+  "rpc": "https://studio-next.genlayer.com/api",
+  "ranAt": "2026-09-15T11:06:50.017Z",
+  "operator": "0x83d074B194aa2AD828729F20b3988ac70e73161f",
+  "scenario": "critical",
+  "scenarioLabel": "Critical exploit pattern",
+  "contracts": {
+    "protocol": "0xdBd33764B6655E76558d8e84CB038153E6560385",
+    "shield": "0xb92DD5fF5742Af06B72e2751E60f9E259A76409F",
+    "source": "deployments/studio-next.json"
+  },
+  "runs": [
+    {
+      "run": 1,
+      "incidentId": "INC-2",
+      "severity": 82,
+      "signalsBits": 3,
+      "signals": "price_manipulation, liquidity_drain",
+      "level": "HALT",
+      "protocolMode": "HALTED",
+      "reportTx": "0x3eb1fb72c9a61423e26f884ac5d6ca5b35a99220ce4064ed023329706b266b0d",
+      "adjudicationTx": "0x84b8cb36fa788abf4eeaa26c14e0c79c478faa2b4e3c89a536dfe39c4f352433",
+      "consensus": {
+        "statusName": "FINALIZED",
+        "executionResult": "SUCCESS",
+        "final": null,
+        "numOfRounds": null,
+        "lastRound": null,
+        "voteCount": 5,
+        "votes": {
+          "0x05d8aFc66B515038712537f99cAAEA73d16f0007": "agree",
+          "0x8142E5D1b04f84c3cD995C25AAe31B31F8e0379E": "agree",
+          "0xE4E106086F167D75E2270fa5f3680f6ac598d179": "idle",
+          "0xcbC79F96B7A275b23EE64d80a98325107F6E1b77": "agree",
+          "0xf13c3DfE38C8E206C33F750C24a1b043b63Cb810": "idle"
+        },
+        "validatorCount": 4,
+        "validatorResults": [
+          "SUCCESS",
+          "ERROR",
+          "ERROR",
+          "SUCCESS"
+        ]
+      }
+    }
+  ],
+  "note": "Public information only. The observation step is simulated (the demo protocol's own telemetry); the incident, adjudication and response are real on-chain transactions."
+}

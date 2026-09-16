@@ -1,0 +1,33 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.gltest_cache/
+artifacts/
+
+# Every environment file is ignored, and the examples are re-included
+# explicitly. A secret-bearing file must never become committable because
+# someone named it .env.testnet or .env.bradbury.local.
+.env
+.env.*
+*.env
+!.env.example
+!frontend/.env.example
+
+# Local demo runs are throwaway rehearsals, not deployment records.
+deployments/localnet-demo-*.json
+
+# Local node runtime files.
+.glsim.pid
+.glsim.log
+
+# Never commit key material in any form.
+*.key
+*.pem
+keystore.json
+
+# Sync leftovers from a Claude session. Safe to delete.
+autoshield-phase8.tar.gz
+cloud-manifest.md5
+"Claude outputs"/
+Claude outputs/

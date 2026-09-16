@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+/*
+ * AutoShield Security Operations Console.
+ *
+ * Visual language: a monitoring console, not a crypto landing page. Deep
+ * neutral ground, one panel elevation, hairline borders, monospace for every
+ * machine value (ids, hashes, metrics) and a restrained four-colour status
+ * scale. No glow, no gradients on data, no animation that does not encode
+ * state.
+ */
+
+@theme {
+  --color-ground: #0a0d12;
+  --color-surface: #10151c;
+  --color-surface-2: #151b24;
+  --color-line: #1e2731;
+  --color-line-bright: #2b3746;
+
+  --color-ink: #e7edf4;
+  --color-ink-dim: #9aa8b8;
+  --color-ink-faint: #6b7887;
+
+  --color-ok: #2dd4a7;
+  --color-ok-dim: #134e40;
+  --color-warn: #f0b429;
+  --color-warn-dim: #4d3a0c;
+  --color-crit: #f4645a;
+  --color-crit-dim: #4f1d1a;
+  --color-info: #62a0e0;
+  --color-info-dim: #17324d;
+
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--color-ground);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Visible focus everywhere, including for keyboard-only users. */
+:focus-visible {
+  outline: 2px solid var(--color-info);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* A faint grid, like a monitoring wall. Decorative only. */
+.soc-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.016) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.016) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* State pulse for "currently evaluating". Subtle, and disabled for users who
+   have asked for reduced motion. */
+@keyframes soc-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.soc-pulse {
+  animation: soc-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes soc-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+.soc-sweep::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inline-size: 33%;
+  background: linear-gradient(90deg, transparent, rgba(98, 160, 224, 0.35), transparent);
+  animation: soc-sweep 1.5s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .soc-pulse,
+  .soc-sweep::after {
+    animation: none;
+  }
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,50 @@
+{
+  "network": "studio-next",
+  "chainId": 61997,
+  "rpc": "https://studio-next.genlayer.com/api",
+  "ranAt": "2026-09-15T14:51:41.967Z",
+  "operator": "0x83d074B194aa2AD828729F20b3988ac70e73161f",
+  "scenario": "oracle",
+  "scenarioLabel": "Oracle price anomaly",
+  "contracts": {
+    "protocol": "0x054be2be73d15DB1B13d836F4045612AB65c685A",
+    "shield": "0x7834967C394e6831c34710134afc0BfFFD9eeA8E",
+    "source": "deployments/studio-next.json"
+  },
+  "runs": [
+    {
+      "run": 1,
+      "incidentId": "INC-1",
+      "severity": 32,
+      "signalsBits": 0,
+      "signals": "none",
+      "level": "SAFE",
+      "protocolMode": "NORMAL",
+      "reportTx": "0x78d58915b605aa67f839e9df90663f9c1505a7026a2ceda6644d3e0e4ab30e72",
+      "adjudicationTx": "0x0766be1744f8d4564930c0d377ea45f6f06179c0d27f7fa6bb2b31af263e79e8",
+      "consensus": {
+        "statusName": "FINALIZED",
+        "executionResult": "SUCCESS",
+        "final": null,
+        "numOfRounds": null,
+        "lastRound": null,
+        "voteCount": 5,
+        "votes": {
+          "0x8142E5D1b04f84c3cD995C25AAe31B31F8e0379E": "disagree",
+          "0x8D32eb5D0207f7E230C45e7BF0D14B2ED5DA3028": "agree",
+          "0xa0435f618c1F27B254998018AEa8Da5C77187852": "agree",
+          "0xcEf1Baa172d0b4D99Dcc505B36332F26D1088025": "agree",
+          "0xf13c3DfE38C8E206C33F750C24a1b043b63Cb810": "disagree"
+        },
+        "validatorCount": 4,
+        "validatorResults": [
+          "SUCCESS",
+          "SUCCESS",
+          "SUCCESS",
+          "SUCCESS"
+        ]
+      }
+    }
+  ],
+  "note": "Public information only. The observation step is simulated (the demo protocol's own telemetry); the incident, adjudication and response are real on-chain transactions."
+}

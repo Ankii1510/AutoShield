@@ -1,0 +1,24 @@
+# Keep the upload to what Vercel actually needs to build the console.
+#
+# The console is a browser client for contracts that are already deployed, so
+# none of the tooling below participates in the build. Excluding it keeps the
+# deployment small and keeps operator tooling off a public host.
+
+# Deploy / demo scripts. These sign transactions with a private key read from
+# the environment. Nothing on Vercel should be able to run them.
+scripts/
+
+# Tests and their config: never part of a production build.
+__tests__/
+vitest.config.ts
+vitest.setup.ts
+
+# Local state. .env.local is already gitignored; naming it here too means a
+# stray copy can never be uploaded and silently override the build env vars
+# Vercel is configured with.
+.env.local
+.env*.local
+
+node_modules/
+.next/
+out/
