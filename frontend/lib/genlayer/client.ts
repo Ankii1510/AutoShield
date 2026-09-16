@@ -245,26 +245,86 @@ export function createReadClient(): ClientBundle {
 }
 
 /**
+ * The key genlayer-js's own `connect()` expects, per network.
+ *
+ * `connect(client, network = "studionet")` takes a NETWORK KEY and ignores the
+ * chain the client was built with. Its keys are its own (`studioDevnet`, not
+ * `studio-next`), and both of this repository's v0.6 networks are chain 61997
+ * under two hostnames, so both map to `studioDevnet`.
+ */
+type SnapNetwork =
+  | "localnet"
+  | "studionet"
+  | "studioDevnet"
+  | "testnetAsimov"
+  | "testnetBradbury";
+
+const SNAP_NETWORK_KEY: Record<NetworkName, SnapNetwork> = {
+  localnet: "localnet",
+  "studio-next": "studioDevnet",
+  "studio-dev": "studioDevnet",
+  studionet: "studionet",
+  "testnet-bradbury": "testnetBradbury",
+  "testnet-asimov": "testnetAsimov",
+};
+
+type Eip1193Provider = {
+  request: (args: { method: string; params?: unknown }) => Promise<unknown>;
+};
+
+function injectedProvider(): Eip1193Provider {
+  const provider = (globalThis as { ethereum?: Eip1193Provider }).ethereum;
+  if (!provider) {
+    throw new Error(
+      "No browser wallet found. MetaMask must be installed for this button; " +
+        "every read on this page works without one.",
+    );
+  }
+  return provider;
+}
+
+/**
  * Connect a browser wallet through GenLayerJS's MetaMask Snap integration.
  *
- * `client.connect()` is the supported entry point in genlayer-js@1.1.8. No
- * extra permissions are requested and no key material is ever read.
+ * Three things here are NOT incidental, and all three were wrong before this
+ * console was ever pointed at a browser wallet:
+ *
+ *  1. `connect()` must be given the network key. Called bare it defaults to
+ *     `"studionet"` and asks MetaMask to add and switch to chain 61999 — a
+ *     different network on a different consensus generation from the 61997 the
+ *     rest of this page is reading.
+ *  2. `connect()` ends with `client.chain = selectedNetwork`, replacing the
+ *     chain this session verified against the node. For studio-next that
+ *     silently swaps in the studio-dev endpoint, so ours is restored after.
+ *  3. `connect()` never sets `client.account` — it only installs the Snap and
+ *     sets the chain. The account has to be requested from the wallet, or
+ *     every later write has nothing to sign with.
+ *
+ * NOT VERIFIED AGAINST A REAL WALLET. This is written from the SDK's source,
+ * not from a working MetaMask session; see docs/DEPLOY-CONSOLE.md step 4.
  */
 export async function connectWallet(): Promise<ClientBundle> {
   const chain = resolveChain();
+  const name = networkName();
   const client = (
-    sdkFor(networkName()) === "v2"
+    sdkFor(name) === "v2"
       ? createClient({ chain })
       : createClientV1({ chain: chain as never })
   ) as GenLayerClient<GenLayerChain>;
-  await client.connect();
 
-  const account = client.account;
-  const address =
-    typeof account === "string" ? account : (account?.address ?? null);
+  await client.connect(SNAP_NETWORK_KEY[name]);
+
+  // Undo connect()'s overwrite (point 2 above).
+  (client as { chain: GenLayerChain }).chain = chain;
+
+  const accounts = (await injectedProvider().request({
+    method: "eth_requestAccounts",
+  })) as string[] | undefined;
+  const address = accounts?.[0] ?? null;
   if (!address) {
-    throw new Error("Wallet connected but returned no address");
+    throw new Error("The wallet returned no account. Unlock it and try again.");
   }
+  (client as { account?: unknown }).account = address;
 
   return { client, address, chainId: chain.id, external: true };
 }
