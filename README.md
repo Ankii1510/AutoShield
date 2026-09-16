@@ -69,6 +69,7 @@ tests/direct/         235 direct-mode tests (no network required)
 tests/integration/    38 tests against a real GenLayer Sim node with 5 validators
 scripts/glsim.sh      start / restart / stop the local node
 docs/ARCHITECTURE.md  design, state machines, authority boundaries, security model
+docs/INTEGRATION.md   what a protocol must implement to be guarded by AutoShield
 docs/DEPLOY-CONSOLE.md hosting the console, and the checklist that proves it is on chain
 docs/DEMO-VIDEO.md    the recording script
 docs/PROGRESS.md      phase-by-phase history and handover

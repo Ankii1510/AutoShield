@@ -31,7 +31,7 @@ const TONE_BG: Record<Tone, string> = {
   warn: "bg-[var(--color-warn)]/10",
   crit: "bg-[var(--color-crit)]/10",
   info: "bg-[var(--color-info)]/10",
-  neutral: "bg-white/5",
+  neutral: "bg-[var(--color-surface-2)]",
 };
 
 export function Panel({
@@ -49,13 +49,13 @@ export function Panel({
 }) {
   return (
     <section
-      className={`rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] ${className}`}
+      className={`rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] shadow-[var(--shadow-panel)] ${className}`}
     >
       {(title || actions) && (
-        <header className="flex flex-wrap items-start justify-between gap-2 border-b border-[var(--color-line)] px-4 py-3">
+        <header className="flex flex-wrap items-start justify-between gap-2 border-b border-[var(--color-line)] px-5 py-3.5">
           <div className="min-w-0">
             {title && (
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-dim)]">
+              <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-faint)]">
                 {title}
               </h2>
             )}
@@ -149,7 +149,7 @@ export function Gauge({
 
   return (
     <div
-      className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/8"
+      className="relative h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-line)]"
       role="meter"
       aria-valuenow={Math.round(pct)}
       aria-valuemin={0}
@@ -185,15 +185,27 @@ export function Button({
   title?: string;
   full?: boolean;
 }) {
+// A disabled control is GREY, never a faded version of its colour. Fading a
+// solid fill turns a decisive blue button into pastel and a red one into pink,
+// which is both ugly and misleading: washed-out red still reads as "danger,
+// sort of". Unavailable should look unavailable, not half-armed.
+const DISABLED =
+  "disabled:cursor-not-allowed disabled:border-[var(--color-line)] " +
+  "disabled:bg-[var(--color-surface-2)] disabled:text-[var(--color-ink-faint)] " +
+  "disabled:shadow-none disabled:brightness-100";
+
+  // The consequential actions are solid, not tinted outlines. A control that
+  // halts a protocol should look like it means it, and a row of same-weight
+  // outlined buttons gives the operator no hierarchy to read under pressure.
   const styles: Record<string, string> = {
     default:
-      "border-[var(--color-line-bright)] bg-[var(--color-surface-2)] text-[var(--color-ink)] hover:border-[var(--color-info)]/50",
+      "border-[var(--color-line-bright)] bg-[var(--color-surface)] text-[var(--color-ink)] shadow-[var(--shadow-panel)] hover:bg-[var(--color-surface-2)] hover:border-[var(--color-ink-faint)]",
     primary:
-      "border-[var(--color-info)]/50 bg-[var(--color-info)]/15 text-[var(--color-info)] hover:bg-[var(--color-info)]/25",
+      "border-transparent bg-[var(--color-info)] text-white shadow-[var(--shadow-panel)] hover:brightness-110",
     danger:
-      "border-[var(--color-crit)]/50 bg-[var(--color-crit)]/12 text-[var(--color-crit)] hover:bg-[var(--color-crit)]/20",
+      "border-transparent bg-[var(--color-crit)] text-white shadow-[var(--shadow-panel)] hover:brightness-110",
     ghost:
-      "border-transparent bg-transparent text-[var(--color-ink-dim)] hover:text-[var(--color-ink)]",
+      "border-transparent bg-transparent text-[var(--color-ink-dim)] hover:text-[var(--color-ink)] hover:bg-[var(--color-surface-2)]",
   };
   return (
     <button
@@ -201,7 +213,7 @@ export function Button({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`inline-flex items-center justify-center gap-2 rounded border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${styles[variant]} ${full ? "w-full" : ""}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-medium transition-all ${DISABLED} ${styles[variant]} ${full ? "w-full" : ""}`}
     >
       {children}
     </button>

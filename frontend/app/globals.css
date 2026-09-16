@@ -3,38 +3,63 @@
 /*
  * AutoShield Security Operations Console.
  *
- * Visual language: a monitoring console, not a crypto landing page. Deep
- * neutral ground, one panel elevation, hairline borders, monospace for every
- * machine value (ids, hashes, metrics) and a restrained four-colour status
- * scale. No glow, no gradients on data, no animation that does not encode
- * state.
+ * Visual language: an instrument for people who are responsible for money, not
+ * a crypto landing page and not a hacker dashboard.
+ *
+ * Light, warm paper ground with white panels lifted by soft shadow rather than
+ * outlined by heavy borders — depth carries the hierarchy, so the interface can
+ * stay quiet. Accents are deep and desaturated: a halt should read as serious,
+ * not as neon. Every machine value (id, hash, address, metric) stays monospace
+ * and tabular, because those are the values an operator compares column-wise
+ * under pressure.
+ *
+ * Restraint is the point. No gradients on data, no glow, and no animation that
+ * does not encode state.
  */
 
 @theme {
-  --color-ground: #0a0d12;
-  --color-surface: #10151c;
-  --color-surface-2: #151b24;
-  --color-line: #1e2731;
-  --color-line-bright: #2b3746;
+  /* Ground and surfaces. The ground is warm off-white; panels are pure white,
+     so elevation reads without a border on every edge. */
+  --color-ground: #f7f6f3;
+  --color-surface: #ffffff;
+  --color-surface-2: #faf9f7;
+  /* Hairlines are barely there on purpose: shadow now carries elevation, and
+     a visible border on top of a shadow makes every panel look stuck on
+     rather than lifted. */
+  --color-line: #edebe5;
+  --color-line-bright: #dcd9d1;
 
-  --color-ink: #e7edf4;
-  --color-ink-dim: #9aa8b8;
-  --color-ink-faint: #6b7887;
+  /* Ink. Near-black rather than black: pure #000 on white glares and is the
+     quickest way to make an interface look unconsidered. */
+  --color-ink: #1a1c20;
+  --color-ink-dim: #5c6270;
+  --color-ink-faint: #8c919d;
 
-  --color-ok: #2dd4a7;
-  --color-ok-dim: #134e40;
-  --color-warn: #f0b429;
-  --color-warn-dim: #4d3a0c;
-  --color-crit: #f4645a;
-  --color-crit-dim: #4f1d1a;
-  --color-info: #62a0e0;
-  --color-info-dim: #17324d;
+  /* Status scale. Deep and desaturated so they stay legible on white and read
+     as institutional rather than alarming. Components tint these at 10% for
+     backgrounds, so each one needs to hold up both as text and as a wash. */
+  --color-ok: #0b7a58;
+  --color-ok-dim: #e4f2ec;
+  --color-warn: #96610a;
+  --color-warn-dim: #fbf0da;
+  --color-crit: #b02a1d;
+  --color-crit-dim: #fbe9e6;
+  --color-info: #23509f;
+  --color-info-dim: #e7edf8;
+
+  /* Elevation. Two steps only: resting panels, and things that float. */
+  --shadow-panel:
+    0 1px 2px rgba(26, 28, 32, 0.04),
+    0 2px 8px rgba(26, 28, 32, 0.04);
+  --shadow-raised:
+    0 2px 4px rgba(26, 28, 32, 0.05),
+    0 8px 24px rgba(26, 28, 32, 0.08);
 
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html,
@@ -44,23 +69,37 @@ body {
 }
 
 body {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Inter", sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Slightly tightened tracking at body size reads as considered typography
+     rather than default-browser text. */
+  letter-spacing: -0.006em;
+}
+
+/* Headings carry the hierarchy, so they get the tightening that display sizes
+   need and body text does not. */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
 }
 
 /* Visible focus everywhere, including for keyboard-only users. */
 :focus-visible {
   outline: 2px solid var(--color-info);
   outline-offset: 2px;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
-/* A faint grid, like a monitoring wall. Decorative only. */
+/* A faint grid behind the header, echoing a monitoring wall. Decorative only,
+   and dark-on-light now — at this opacity it is felt more than seen. */
 .soc-grid {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.016) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.016) 1px, transparent 1px);
-  background-size: 48px 48px;
+    linear-gradient(rgba(26, 28, 32, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26, 28, 32, 0.022) 1px, transparent 1px);
+  background-size: 56px 56px;
 }
 
 /* State pulse for "currently evaluating". Subtle, and disabled for users who
@@ -93,7 +132,12 @@ body {
   position: absolute;
   inset-block: 0;
   inline-size: 33%;
-  background: linear-gradient(90deg, transparent, rgba(98, 160, 224, 0.35), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(35, 80, 159, 0.28),
+    transparent
+  );
   animation: soc-sweep 1.5s linear infinite;
 }
 

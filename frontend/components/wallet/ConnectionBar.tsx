@@ -26,17 +26,25 @@ export function ConnectionBar({
   busy: boolean;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-2.5">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-5 py-3">
       <div className="flex items-center gap-3">
-        <span className="flex items-center gap-2">
-          <span aria-hidden="true" className="text-[var(--color-info)]">
-            ▰
+        {/* A real mark rather than a glyph, and the wordmark given room to
+            breathe: this bar is the first thing anyone sees, and a cramped
+            monospace arrow was doing the product no favours. */}
+        <span className="flex items-center gap-2.5">
+          <span
+            aria-hidden="true"
+            className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--color-info)] text-[13px] font-bold text-white shadow-[var(--shadow-panel)]"
+          >
+            A
           </span>
-          <span className="text-sm font-semibold tracking-tight text-[var(--color-ink)]">
-            AutoShield
-          </span>
-          <span className="hidden text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink-faint)] sm:inline">
-            Security Operations Console
+          <span className="flex flex-col leading-none">
+            <span className="text-[15px] font-semibold tracking-[-0.01em] text-[var(--color-ink)]">
+              AutoShield
+            </span>
+            <span className="mt-1 hidden text-[9px] font-medium uppercase tracking-[0.2em] text-[var(--color-ink-faint)] sm:inline">
+              Security Operations Console
+            </span>
           </span>
         </span>
       </div>
