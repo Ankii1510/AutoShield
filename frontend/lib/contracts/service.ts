@@ -23,6 +23,13 @@ import {
   type GenLayerClient,
 } from "@/lib/genlayer/client";
 import type { GenLayerChain, TransactionHash } from "genlayer-js/types";
+
+/** What both of genlayer-js's fee estimators return, in the part we use. */
+type FeeEstimate = {
+  distribution: unknown;
+  messageAllocations: unknown;
+  feeValue: unknown;
+};
 import {
   decodeConfig,
   decodeIncident,
@@ -234,6 +241,7 @@ export class AutoShieldService {
 
   // --------------------------------------------------------------- writes
 
+
   /**
    * The execution results that mean "the contract ran and returned".
    *
@@ -246,18 +254,26 @@ export class AutoShieldService {
   private static readonly SUCCESS_RESULTS = ["SUCCESS", "FINISHED_WITH_RETURN"];
 
   /**
-   * Quote the fee for one write.
+   * Quote the fee for one write. TWO layers, and a loud failure.
    *
    * Consensus v0.6 CHARGES FEES, and a transaction submitted without one is
    * rejected by the consensus contract with `FeeValueMustBeNonZero` before the
    * contract is reached. This console's write path predates that: it sent
-   * `value: 0n` and no fee at all, which was correct on the gasless v0.5
-   * networks and silently broke every browser write on Studio Next.
+   * `value: 0n` and no fee at all, correct on the gasless v0.5 networks and
+   * silently fatal on Studio Next.
    *
-   * The estimator works by simulating the call, so it fails whenever the call
-   * itself would revert — a reporter still inside its cooldown, for instance.
-   * That is not a reason to refuse to send: the transaction should go and fail
-   * on chain with its real error rather than being blocked here by a quote.
+   * `estimateTransactionFeesForWrite` sizes the fee to this exact call, so it
+   * is tried first. But it works by SIMULATING the call, which means it fails
+   * whenever the call itself would revert — and on Studio Next it also fails
+   * for writes that are perfectly fine (see the known issue in the README).
+   * `estimateTransactionFees` simulates nothing and survives both cases, so it
+   * is the fallback.
+   *
+   * If neither answers on a v0.6 network, this THROWS. An earlier version
+   * returned null here and sent the transaction anyway, which produced exactly
+   * the `FeeValueMustBeNonZero` revert this method exists to prevent — paying
+   * gas to be told what we already knew. A write we know the network will
+   * refuse is not worth sending.
    */
   private async quoteFees(
     address: string,
@@ -265,28 +281,45 @@ export class AutoShieldService {
     args: unknown[],
   ): Promise<unknown | null> {
     if (sdkFor(networkName()) !== "v2") return null;
+
+    const client = this.client as unknown as {
+      estimateTransactionFeesForWrite?: (input: {
+        address: string;
+        functionName: string;
+        args: unknown[];
+      }) => Promise<FeeEstimate>;
+      estimateTransactionFees?: () => Promise<FeeEstimate>;
+    };
+
+    const shape = (estimate: FeeEstimate) => ({
+      distribution: estimate.distribution,
+      messageAllocations: estimate.messageAllocations,
+      feeValue: estimate.feeValue,
+    });
+
     try {
-      const estimate = (await (
-        this.client as unknown as {
-          estimateTransactionFeesForWrite: (input: {
-            address: string;
-            functionName: string;
-            args: unknown[];
-          }) => Promise<{
-            distribution: unknown;
-            messageAllocations: unknown;
-            feeValue: unknown;
-          }>;
-        }
-      ).estimateTransactionFeesForWrite({ address, functionName, args }));
-      return {
-        distribution: estimate.distribution,
-        messageAllocations: estimate.messageAllocations,
-        feeValue: estimate.feeValue,
-      };
+      const perCall = await client.estimateTransactionFeesForWrite?.({
+        address,
+        functionName,
+        args,
+      });
+      if (perCall) return shape(perCall);
     } catch {
-      return null;
+      /* simulation-based, so it fails on a call that would revert; fall back */
     }
+
+    try {
+      const blanket = await client.estimateTransactionFees?.();
+      if (blanket) return shape(blanket);
+    } catch {
+      /* nothing left to try */
+    }
+
+    throw new Error(
+      "Could not get a fee quote from the network, and this network rejects " +
+        "any transaction without one. Nothing was sent. Retry in a moment — " +
+        "if it persists, the fee estimator on this node is down.",
+    );
   }
 
   private async write(
