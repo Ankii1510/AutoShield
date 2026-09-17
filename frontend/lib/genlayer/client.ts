@@ -439,19 +439,11 @@ function installProvider(provider: Eip1193Provider): void {
 export async function connectWallet(): Promise<ClientBundle> {
   const chain = resolveChain();
   const name = networkName();
-  const client = (
-    sdkFor(name) === "v2"
-      ? createClient({ chain })
-      : createClientV1({ chain: chain as never })
-  ) as GenLayerClient<GenLayerChain>;
 
   const provider = await metamaskProvider();
   installProvider(provider);
-  await client.connect(SNAP_NETWORK_KEY[name]);
 
-  // Undo connect()'s overwrite (point 2 above).
-  (client as { chain: GenLayerChain }).chain = chain;
-
+  // The address first, because the client has to be BUILT with an account.
   const accounts = (await provider.request({
     method: "eth_requestAccounts",
   })) as string[] | undefined;
@@ -459,7 +451,31 @@ export async function connectWallet(): Promise<ClientBundle> {
   if (!address) {
     throw new Error("The wallet returned no account. Unlock it and try again.");
   }
-  (client as { account?: unknown }).account = address;
+
+  // `createClient` only takes an account at construction: internally it does
+  // `...config.account ? { account: config.account } : {}`. Assigning
+  // `client.account` afterwards — which is what this used to do — does not
+  // stick, and the failure surfaces far away as "No account set" the first
+  // time a write is signed, long after connecting appeared to succeed.
+  //
+  // The shape matters too. It must be an OBJECT: the send path reads
+  // `validateAccount(senderAccount).address`, which is `undefined` on a bare
+  // address string. `type: "json-rpc"` is viem's own shape for an account
+  // whose key lives in the wallet, and because the object has no
+  // `signMessage`, the SDK signs through `window.ethereum` — which is exactly
+  // why `installProvider` above has to leave the right wallet in that slot.
+  const account = { address: address as `0x${string}`, type: "json-rpc" as const };
+
+  const client = (
+    sdkFor(name) === "v2"
+      ? createClient({ chain, account: account as never })
+      : createClientV1({ chain: chain as never, account: account as never })
+  ) as GenLayerClient<GenLayerChain>;
+
+  await client.connect(SNAP_NETWORK_KEY[name]);
+
+  // Undo connect()'s overwrite (point 2 above).
+  (client as { chain: GenLayerChain }).chain = chain;
 
   return { client, address, chainId: chain.id, external: true };
 }
