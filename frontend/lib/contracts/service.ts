@@ -17,6 +17,8 @@
 
 import {
   TransactionStatus,
+  networkName,
+  sdkFor,
   toCalldataAddress,
   type GenLayerClient,
 } from "@/lib/genlayer/client";
@@ -232,17 +234,75 @@ export class AutoShieldService {
 
   // --------------------------------------------------------------- writes
 
+  /**
+   * The execution results that mean "the contract ran and returned".
+   *
+   * Consensus v0.6 renamed this: v0.5 reported "SUCCESS", v0.6 reports
+   * "FINISHED_WITH_RETURN". Both are accepted because a v0.5 node still
+   * answers with the old name. Nothing else counts — v0.6 also defines
+   * FINISHED_WITH_ERROR, TIMEOUT, NONDET_DISAGREE and DETERMINISTIC_VIOLATION,
+   * and every one of those is a failed write.
+   */
+  private static readonly SUCCESS_RESULTS = ["SUCCESS", "FINISHED_WITH_RETURN"];
+
+  /**
+   * Quote the fee for one write.
+   *
+   * Consensus v0.6 CHARGES FEES, and a transaction submitted without one is
+   * rejected by the consensus contract with `FeeValueMustBeNonZero` before the
+   * contract is reached. This console's write path predates that: it sent
+   * `value: 0n` and no fee at all, which was correct on the gasless v0.5
+   * networks and silently broke every browser write on Studio Next.
+   *
+   * The estimator works by simulating the call, so it fails whenever the call
+   * itself would revert — a reporter still inside its cooldown, for instance.
+   * That is not a reason to refuse to send: the transaction should go and fail
+   * on chain with its real error rather than being blocked here by a quote.
+   */
+  private async quoteFees(
+    address: string,
+    functionName: string,
+    args: unknown[],
+  ): Promise<unknown | null> {
+    if (sdkFor(networkName()) !== "v2") return null;
+    try {
+      const estimate = (await (
+        this.client as unknown as {
+          estimateTransactionFeesForWrite: (input: {
+            address: string;
+            functionName: string;
+            args: unknown[];
+          }) => Promise<{
+            distribution: unknown;
+            messageAllocations: unknown;
+            feeValue: unknown;
+          }>;
+        }
+      ).estimateTransactionFeesForWrite({ address, functionName, args }));
+      return {
+        distribution: estimate.distribution,
+        messageAllocations: estimate.messageAllocations,
+        feeValue: estimate.feeValue,
+      };
+    } catch {
+      return null;
+    }
+  }
+
   private async write(
     address: string,
     functionName: string,
     args: unknown[],
   ): Promise<WriteOutcome> {
+    const fees = await this.quoteFees(address, functionName, args);
+
     const hash = (await this.client.writeContract({
       address: address as `0x${string}`,
       functionName,
       args: args as never[],
       value: 0n,
-    })) as string;
+      ...(fees ? { fees } : {}),
+    } as never)) as string;
 
     // `TransactionHash` is a branded `0x${string}`; the brand is compile-time
     // only, so the runtime value is exactly the hex string we just received.
@@ -258,10 +318,18 @@ export class AutoShieldService {
       leader && typeof leader.execution_result === "string"
         ? leader.execution_result
         : "UNKNOWN";
-    const statusName = receipt.statusName ?? String(receipt.status ?? "UNKNOWN");
+    // Nodes disagree about where the lifecycle status lives: a separate
+    // `statusName`, a name in `status`, the numeric enum, or a lowercase
+    // `lifecycle.state`. Reading one spelling and trusting it is how a good
+    // transaction gets reported as a failure.
+    const lifecycle = (receipt as { lifecycle?: { state?: unknown } }).lifecycle;
+    const statusName =
+      receipt.statusName ??
+      (typeof lifecycle?.state === "string" ? lifecycle.state.toUpperCase() : null) ??
+      String(receipt.status ?? "UNKNOWN");
 
     // Lifecycle status is not success. Only an executed contract counts.
-    const succeeded = executionResult === "SUCCESS";
+    const succeeded = AutoShieldService.SUCCESS_RESULTS.includes(executionResult);
 
     return {
       hash,
